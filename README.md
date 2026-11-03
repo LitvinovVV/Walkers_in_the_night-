@@ -1,8 +1,8 @@
 # walking-in-the-night
 
-Учебный проект: текстовый квест по одноименной книге.
+Учебный проект: текстовый квест по одноименному циклу книг.
 
-Ссылка на сайт: https://litvinovvv.github.io/walking-in-the-night/
+Ссылка на сайт: https://litvinovvv.github.io/Walkers_in_the_night-/
 
 Стек технологий проекта:
 
