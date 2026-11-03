@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ДОБАВЬТЕ РАЗРЕШЕНИЕ СЮДА (вне тега application) -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.NoActionBar">
 
-        <!-- 1. Заставка запускается первой -->
         <activity
             android:name=".SplashActivity"
             android:exported="true">
@@ -18,12 +18,10 @@
             </intent-filter>
         </activity>
 
-        <!-- 2. Основной экран игры открывается после заставки -->
         <activity
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- 3. Экран WebView для сайта -->
         <activity
             android:name=".WebViewActivity"
             android:exported="false" />

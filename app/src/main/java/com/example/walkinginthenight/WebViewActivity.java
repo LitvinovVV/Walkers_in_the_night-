@@ -23,10 +23,6 @@ public class WebViewActivity extends AppCompatActivity {
 
         webView.setWebViewClient(new WebViewClient());
 
-        // Замените эту ссылку на адрес вашего опубликованного сайта (например, GitHub Pages)
-        // Либо, если сайт лежит в папке assets, раскомментируйте строчку ниже:
-        // webView.loadUrl("file:///android_asset/index.html");
-
         webView.loadUrl("https://litvinovvv.github.io/Walkers_in_the_night-/");
     }
 

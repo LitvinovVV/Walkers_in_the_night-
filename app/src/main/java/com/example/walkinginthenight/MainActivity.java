@@ -424,7 +424,7 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
 
-        // 1. Ползунок: Скорость текста
+        
         TextView tvSpeedLabel = createSliderLabel("Скорость текста: " + getSpeedTextDescription(speedProgress));
         SeekBar sbSpeed = createStyledSeekBar(40, speedProgress);
         sbSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -445,7 +445,7 @@ public class MainActivity extends AppCompatActivity {
         container.addView(tvSpeedLabel);
         container.addView(sbSpeed);
 
-        // 2. Ползунок: Громкость
+        
         TextView tvVolumeLabel = createSliderLabel("Громкость: " + musicVolume + "%");
         SeekBar sbVolume = createStyledSeekBar(100, musicVolume);
         sbVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -466,7 +466,7 @@ public class MainActivity extends AppCompatActivity {
         container.addView(tvVolumeLabel);
         container.addView(sbVolume);
 
-        // 3. Ползунок: Размер текста
+        
         int initialFontProgress = Math.max(0, Math.min(10, Math.round(storyFontSize - 14f)));
         TextView tvSizeLabel = createSliderLabel("Размер текста: " + Math.round(storyFontSize));
         SeekBar sbSize = createStyledSeekBar(10, initialFontProgress);
@@ -541,7 +541,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout container = createDialogContainer(currentCardBgColor, currentCardStrokeColor);
         container.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        // Стилизованная круглая иконка-символ в стиле Цитадели
+        
         TextView iconBadge = new TextView(this);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(58), dpToPx(58));
         iconParams.setMargins(0, dpToPx(4), 0, dpToPx(12));
