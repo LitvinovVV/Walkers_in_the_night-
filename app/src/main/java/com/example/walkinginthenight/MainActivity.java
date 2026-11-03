@@ -1,9 +1,12 @@
 package com.example.walkinginthenight;
 
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -11,110 +14,109 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
+    private StoryDatabaseHelper dbHelper;
+    private LinearLayout rootLayout;
+    private TextView tvBookHeader;
+    private TextView tvChapterTitle;
     private TextView tvStoryText;
-    private LinearLayout choicesContainer;
-    private ScrollView scrollView;
+    private TextView tvTapHint;
+    private View topDivider;
     private Button btnSettings;
     private Button btnChapters;
-    private Button btnQuickMute;
-
-    private static final String PREFS_NAME = "WalkingInTheNightPrefs";
-    private static final String KEY_SAVED_SCENE = "saved_scene";
-    private static final String KEY_LAST_CANON_SCENE = "last_canon_scene";
-    private static final String KEY_MUSIC_VOLUME = "music_volume";
-    private static final String KEY_MUSIC_MUTED = "music_muted";
-    private static final String KEY_TEXT_SPEED = "text_speed";
-
-    private SharedPreferences prefs;
-    private StoryDatabaseHelper dbHelper;
+    private LinearLayout choicesContainer;
+    private ScrollView scrollViewStory;
 
     private MediaPlayer mediaPlayer;
-    private int musicVolumePercent = 70;
-    private boolean isMusicMuted = false;
-    private int textSpeedProgress = 0;
-    private long charDelayMs = 40;
+    private int musicVolume = 60;
+
+    private int currentSceneId = 101;
+    private int currentBookId = 1;
+    private String fullSceneText = "";
+    private boolean isTyping = false;
+    private int charIndex = 0;
+
+    private int speedProgress = 24;
+    private long typingDelay = 16L;
+    private float storyFontSize = 17f;
 
     private final Handler typingHandler = new Handler(Looper.getMainLooper());
-    private final Handler notificationHandler = new Handler(Looper.getMainLooper());
     private Runnable typingRunnable;
-    private String currentFullText = "";
-    private int currentCharIndex = 0;
-    private boolean isTyping = false;
 
-    private StoryDatabaseHelper.SceneData currentNode;
-    private String currentSceneId = "ch1_p1";
-    private String lastCanonSceneId = "ch1_p1";
+    private int currentBgDeepColor = Color.parseColor("#0D0B0A");
+    private int currentCardBgColor = Color.parseColor("#171311");
+    private int currentCardStrokeColor = Color.parseColor("#6B3A32");
+    private int currentHeaderColor = Color.parseColor("#D7B377");
+    private int currentChapterColor = Color.parseColor("#E8C39E");
+    private int currentHintColor = Color.parseColor("#8E7968");
+    private int currentBtnBgColor = Color.parseColor("#2E1917");
+    private int currentBtnStrokeColor = Color.parseColor("#8A423B");
+    private int currentTextColor = Color.parseColor("#E6DFD5");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        View mainRoot = findViewById(R.id.mainRoot);
-        final int basePadding = (int) (14 * getResources().getDisplayMetrics().density);
-        ViewCompat.setOnApplyWindowInsetsListener(mainRoot, (v, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(
-                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
-            );
+        dbHelper = new StoryDatabaseHelper(this);
+
+        rootLayout = findViewById(R.id.rootLayout);
+        tvBookHeader = findViewById(R.id.tvBookHeader);
+        tvChapterTitle = findViewById(R.id.tvChapterTitle);
+        tvStoryText = findViewById(R.id.tvStoryText);
+        tvTapHint = findViewById(R.id.tvTapHint);
+        topDivider = findViewById(R.id.topDivider);
+        btnSettings = findViewById(R.id.btnSettings);
+        btnChapters = findViewById(R.id.btnChapters);
+        choicesContainer = findViewById(R.id.choicesContainer);
+        scrollViewStory = findViewById(R.id.scrollViewStory);
+
+        final int basePadLeft = dpToPx(16);
+        final int basePadRight = dpToPx(16);
+        final int basePadTop = dpToPx(12);
+        final int basePadBottom = dpToPx(12);
+
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(
-                    basePadding + insets.left,
-                    basePadding + insets.top,
-                    basePadding + insets.right,
-                    basePadding + insets.bottom
+                    basePadLeft + insets.left,
+                    basePadTop + insets.top,
+                    basePadRight + insets.right,
+                    basePadBottom + insets.bottom
             );
             return WindowInsetsCompat.CONSUMED;
         });
 
-        tvStoryText = findViewById(R.id.tvStoryText);
-        choicesContainer = findViewById(R.id.choicesContainer);
-        scrollView = findViewById(R.id.scrollView);
-        btnSettings = findViewById(R.id.btnSettings);
-        btnChapters = findViewById(R.id.btnChapters);
-        btnQuickMute = findViewById(R.id.btnQuickMute);
+        SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
+        currentSceneId = prefs.getInt("saved_scene_id", 101);
+        musicVolume = prefs.getInt("music_volume", 60);
+        speedProgress = prefs.getInt("speed_progress", 24);
+        typingDelay = (40 - speedProgress);
+        storyFontSize = prefs.getFloat("story_font_size", 17f);
+        tvStoryText.setTextSize(storyFontSize);
 
-        dbHelper = new StoryDatabaseHelper(this);
-
-        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        musicVolumePercent = prefs.getInt(KEY_MUSIC_VOLUME, 70);
-        isMusicMuted = prefs.getBoolean(KEY_MUSIC_MUTED, false);
-        textSpeedProgress = prefs.getInt(KEY_TEXT_SPEED, 0);
-        lastCanonSceneId = prefs.getString(KEY_LAST_CANON_SCENE, "ch1_p1");
-        String savedScene = prefs.getString(KEY_SAVED_SCENE, "ch1_p1");
-
-        updateCharDelay();
-        initMusic();
-        updateQuickMuteButton();
+        unlockScene(101);
+        initBackgroundMusic();
 
         btnSettings.setOnClickListener(v -> showSettingsDialog());
-        btnChapters.setOnClickListener(v -> showChaptersDialog());
-
-        btnQuickMute.setOnClickListener(v -> {
-            isMusicMuted = !isMusicMuted;
-            applyMusicVolume();
-            updateQuickMuteButton();
-            saveSettings();
-        });
+        btnChapters.setOnClickListener(v -> showBookSelectionDialog());
 
         tvStoryText.setOnClickListener(v -> {
             if (isTyping) {
@@ -122,657 +124,84 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        if (dbHelper.getScene(savedScene) == null) {
-            savedScene = "ch1_p1";
-            lastCanonSceneId = "ch1_p1";
-        }
-        loadScene(savedScene);
+        loadScene(currentSceneId);
     }
 
-    private void initMusic() {
+    private int dpToPx(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
+    }
+
+    private void unlockScene(int sceneId) {
+        SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
+        Set<String> existing = prefs.getStringSet("unlocked_scenes", new HashSet<>());
+        Set<String> updated = new HashSet<>(existing);
+        updated.add(String.valueOf(sceneId));
+        prefs.edit().putStringSet("unlocked_scenes", updated).apply();
+    }
+
+    private boolean isSceneUnlocked(int sceneId) {
+        if (sceneId == 101) return true;
+        SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
+        Set<String> unlocked = prefs.getStringSet("unlocked_scenes", new HashSet<>());
+        return unlocked.contains(String.valueOf(sceneId));
+    }
+
+    private void resetStoryToBeginning() {
+        SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
+        Set<String> initialSet = new HashSet<>();
+        initialSet.add("101");
+        prefs.edit()
+                .putStringSet("unlocked_scenes", initialSet)
+                .putInt("saved_scene_id", 101)
+                .apply();
+        loadScene(101);
+        showStylizedNoticeToast("↺", "История началась с самого начала.");
+    }
+
+    private void initBackgroundMusic() {
         try {
-            mediaPlayer = MediaPlayer.create(this, R.raw.music);
-            if (mediaPlayer != null) {
-                mediaPlayer.setLooping(true);
-                applyMusicVolume();
-                mediaPlayer.start();
+            int rawResId = findFirstRawAudioResId();
+            if (rawResId != 0) {
+                mediaPlayer = MediaPlayer.create(this, rawResId);
+                if (mediaPlayer != null) {
+                    mediaPlayer.setLooping(true);
+                    applyMusicVolume();
+                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception ignored) {
         }
     }
 
     private void applyMusicVolume() {
-        if (mediaPlayer != null) {
-            float volume = (isMusicMuted || musicVolumePercent == 0) ? 0f : (musicVolumePercent / 100f);
-            mediaPlayer.setVolume(volume, volume);
-        }
-    }
-
-    private void updateQuickMuteButton() {
-        if (btnQuickMute != null) {
-            btnQuickMute.setText((isMusicMuted || musicVolumePercent == 0) ? "🔇" : "🔊");
-        }
-    }
-
-    private void updateCharDelay() {
-        if (textSpeedProgress >= 100) {
-            charDelayMs = 0;
+        if (mediaPlayer == null) return;
+        float vol = musicVolume / 100f;
+        mediaPlayer.setVolume(vol, vol);
+        if (musicVolume > 0) {
+            if (!mediaPlayer.isPlaying()) {
+                mediaPlayer.start();
+            }
         } else {
-            charDelayMs = Math.max(1, Math.round(40 * (100 - textSpeedProgress) / 100f));
-        }
-    }
-
-    private String getSpeedLabelText() {
-        if (textSpeedProgress >= 100) {
-            return "Скорость текста: Моментально";
-        } else if (textSpeedProgress == 0) {
-            return "Скорость текста: Обычная";
-        } else {
-            return "Скорость текста: +" + textSpeedProgress + "%";
-        }
-    }
-
-    private void saveProgress() {
-        prefs.edit()
-                .putString(KEY_SAVED_SCENE, currentSceneId)
-                .putString(KEY_LAST_CANON_SCENE, lastCanonSceneId)
-                .apply();
-    }
-
-    private void saveSettings() {
-        prefs.edit()
-                .putInt(KEY_MUSIC_VOLUME, musicVolumePercent)
-                .putBoolean(KEY_MUSIC_MUTED, isMusicMuted)
-                .putInt(KEY_TEXT_SPEED, textSpeedProgress)
-                .apply();
-    }
-
-    // =========================================================================
-    // СТИЛИЗОВАННОЕ ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ В ДИЗАЙНЕ ИГРЫ
-    // =========================================================================
-    private void showStyledNotification(String message) {
-        if (isFinishing()) return;
-
-        float density = getResources().getDisplayMetrics().density;
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.HORIZONTAL);
-        box.setGravity(Gravity.CENTER);
-        int padH = (int) (20 * density);
-        int padV = (int) (12 * density);
-        box.setPadding(padH, padV, padH, padV);
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.parseColor("#181512"));
-        bg.setStroke((int) (2 * density), Color.parseColor("#8C6D53"));
-        bg.setCornerRadius(12 * density);
-        box.setBackground(bg);
-
-        TextView tv = new TextView(this);
-        tv.setText(message);
-        tv.setTextColor(Color.parseColor("#EAE4DC"));
-        tv.setTextSize(15f);
-        tv.setTypeface(Typeface.SERIF, Typeface.BOLD);
-        tv.setGravity(Gravity.CENTER);
-        box.addView(tv);
-
-        builder.setView(box);
-        AlertDialog notifyDialog = builder.create();
-
-        Window window = notifyDialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawableResource(android.R.color.transparent);
-            window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            window.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-            WindowManager.LayoutParams wlp = window.getAttributes();
-            wlp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-            wlp.y = (int) (60 * density);
-            window.setAttributes(wlp);
-        }
-
-        notifyDialog.show();
-        if (window != null) {
-            window.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-
-        notificationHandler.postDelayed(() -> {
-            if (!isFinishing() && notifyDialog.isShowing()) {
-                notifyDialog.dismiss();
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
             }
-        }, 2000);
+        }
     }
 
-    // =========================================================================
-    // ОКНО «ВЫБОР ГЛАВЫ» С КРЕСТИКОМ И ПОДТВЕРЖДЕНИЕМ ПЕРЕХОДА
-    // =========================================================================
-    private void showChaptersDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        float density = getResources().getDisplayMetrics().density;
-        int pad = (int) (16 * density);
-
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(pad, (int) (12 * density), pad, pad);
-
-        GradientDrawable dialogBg = new GradientDrawable();
-        dialogBg.setColor(Color.parseColor("#181512"));
-        dialogBg.setStroke((int) (2 * density), Color.parseColor("#4A3F35"));
-        dialogBg.setCornerRadius(14 * density);
-        layout.setBackground(dialogBg);
-
-        // Заголовок и круглый крестик закрытия
-        LinearLayout headerLayout = new LinearLayout(this);
-        headerLayout.setOrientation(LinearLayout.HORIZONTAL);
-        headerLayout.setGravity(Gravity.CENTER_VERTICAL);
-        headerLayout.setPadding(0, 0, 0, (int) (12 * density));
-
-        TextView tvTitle = new TextView(this);
-        tvTitle.setText("Выбор главы");
-        tvTitle.setTextColor(Color.parseColor("#EAE4DC"));
-        tvTitle.setTextSize(18f);
-        tvTitle.setTypeface(Typeface.SERIF, Typeface.BOLD);
-        headerLayout.addView(tvTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView btnCloseCircle = createCloseCircleButton(density);
-        headerLayout.addView(btnCloseCircle);
-        layout.addView(headerLayout);
-
-        // Прокручиваемый список глав
-        ScrollView chaptersScroll = new ScrollView(this);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                (int) (250 * density)
-        );
-        chaptersScroll.setLayoutParams(scrollParams);
-
-        LinearLayout listContainer = new LinearLayout(this);
-        listContainer.setOrientation(LinearLayout.VERTICAL);
-        chaptersScroll.addView(listContainer);
-        layout.addView(chaptersScroll);
-
-        // Кнопка подтверждения перехода
-        Button btnConfirmJump = new Button(this);
-        btnConfirmJump.setText("Выберите открытую главу");
-        btnConfirmJump.setAllCaps(false);
-        btnConfirmJump.setTextSize(14f);
-        btnConfirmJump.setTextColor(Color.parseColor("#857B70"));
-        btnConfirmJump.setEnabled(false);
-
-        GradientDrawable confirmDisabledBg = new GradientDrawable();
-        confirmDisabledBg.setColor(Color.parseColor("#241F1C"));
-        confirmDisabledBg.setStroke((int) (1 * density), Color.parseColor("#3D352E"));
-        confirmDisabledBg.setCornerRadius(8 * density);
-        btnConfirmJump.setBackground(confirmDisabledBg);
-
-        LinearLayout.LayoutParams confirmParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) (42 * density)
-        );
-        confirmParams.setMargins(0, (int) (12 * density), 0, 0);
-        btnConfirmJump.setLayoutParams(confirmParams);
-        layout.addView(btnConfirmJump);
-
-        List<StoryDatabaseHelper.ChapterItem> chapters = dbHelper.getAllChapters();
-        final StoryDatabaseHelper.ChapterItem[] selectedChapter = {null};
-        final List<Button> unlockedButtons = new ArrayList<>();
-
-        for (StoryDatabaseHelper.ChapterItem ch : chapters) {
-            Button chBtn = new Button(this);
-            chBtn.setAllCaps(false);
-            chBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-            chBtn.setTextSize(14f);
-            chBtn.setPadding((int) (14 * density), (int) (10 * density), (int) (14 * density), (int) (10 * density));
-
-            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-            itemParams.setMargins(0, 0, 0, (int) (8 * density));
-            chBtn.setLayoutParams(itemParams);
-
-            if (ch.isUnlocked) {
-                chBtn.setText("📖  " + ch.title);
-                chBtn.setTextColor(Color.parseColor("#EAE4DC"));
-                chBtn.setBackground(createChapterButtonBg(density, false));
-                unlockedButtons.add(chBtn);
-
-                chBtn.setOnClickListener(v -> {
-                    selectedChapter[0] = ch;
-                    for (Button b : unlockedButtons) {
-                        b.setBackground(createChapterButtonBg(density, false));
-                    }
-                    chBtn.setBackground(createChapterButtonBg(density, true));
-
-                    btnConfirmJump.setEnabled(true);
-                    btnConfirmJump.setText("Перейти к главе");
-                    btnConfirmJump.setTextColor(Color.parseColor("#FFFFFF"));
-                    GradientDrawable activeBg = new GradientDrawable();
-                    activeBg.setColor(Color.parseColor("#6E2626"));
-                    activeBg.setStroke((int) (1.5f * density), Color.parseColor("#A3483B"));
-                    activeBg.setCornerRadius(8 * density);
-                    btnConfirmJump.setBackground(activeBg);
-                });
-            } else {
-                chBtn.setText("🔒  " + ch.title + " (Не прочитано)");
-                chBtn.setTextColor(Color.parseColor("#665D54"));
-                GradientDrawable lockedBg = new GradientDrawable();
-                lockedBg.setColor(Color.parseColor("#141210"));
-                lockedBg.setStroke((int) (1 * density), Color.parseColor("#29231E"));
-                lockedBg.setCornerRadius(8 * density);
-                chBtn.setBackground(lockedBg);
-
-                chBtn.setOnClickListener(v -> showStyledNotification("Эта глава еще не прочитана"));
+    private int findFirstRawAudioResId() {
+        String[] commonNames = {"music", "bg_music", "ambient", "theme", "night", "soundtrack", "ost", "audio"};
+        for (String name : commonNames) {
+            int id = getResources().getIdentifier(name, "raw", getPackageName());
+            if (id != 0) return id;
+        }
+        try {
+            Class<?> rawClass = Class.forName(getPackageName() + ".R$raw");
+            Field[] fields = rawClass.getDeclaredFields();
+            if (fields.length > 0) {
+                return fields[0].getInt(null);
             }
-
-            listContainer.addView(chBtn);
+        } catch (Exception ignored) {
         }
-
-        builder.setView(layout);
-        AlertDialog chaptersDialog = builder.create();
-
-        btnCloseCircle.setOnClickListener(v -> chaptersDialog.dismiss());
-
-        btnConfirmJump.setOnClickListener(v -> {
-            if (selectedChapter[0] != null) {
-                chaptersDialog.dismiss();
-                lastCanonSceneId = selectedChapter[0].startSceneId;
-                loadScene(selectedChapter[0].startSceneId);
-                showStyledNotification("Переход: " + selectedChapter[0].title);
-            }
-        });
-
-        chaptersDialog.show();
-        if (chaptersDialog.getWindow() != null) {
-            chaptersDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.86);
-            chaptersDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-    }
-
-    private GradientDrawable createChapterButtonBg(float density, boolean isSelected) {
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(Color.parseColor(isSelected ? "#2E221F" : "#1E1B18"));
-        bg.setStroke((int) ((isSelected ? 2f : 1f) * density),
-                Color.parseColor(isSelected ? "#A3483B" : "#3D352E"));
-        bg.setCornerRadius(8 * density);
-        return bg;
-    }
-
-    private TextView createCloseCircleButton(float density) {
-        TextView btnCloseCircle = new TextView(this);
-        btnCloseCircle.setText("✕");
-        btnCloseCircle.setTextColor(Color.parseColor("#EAE4DC"));
-        btnCloseCircle.setTextSize(14f);
-        btnCloseCircle.setGravity(Gravity.CENTER);
-        int circleSize = (int) (30 * density);
-        btnCloseCircle.setLayoutParams(new LinearLayout.LayoutParams(circleSize, circleSize));
-
-        GradientDrawable circleBg = new GradientDrawable();
-        circleBg.setShape(GradientDrawable.OVAL);
-        circleBg.setColor(Color.parseColor("#2A241F"));
-        circleBg.setStroke((int) (1.5f * density), Color.parseColor("#6E5D4F"));
-        btnCloseCircle.setBackground(circleBg);
-        return btnCloseCircle;
-    }
-
-    // =========================================================================
-    // ОКНО НАСТРОЕК И ПОЛНЫЙ СБРОС ПРОГРЕССА
-    // =========================================================================
-    private void showSettingsDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-        float density = getResources().getDisplayMetrics().density;
-        int pad = (int) (16 * density);
-
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(pad, (int) (12 * density), pad, pad);
-
-        GradientDrawable dialogBg = new GradientDrawable();
-        dialogBg.setColor(Color.parseColor("#181512"));
-        dialogBg.setStroke((int) (2 * density), Color.parseColor("#4A3F35"));
-        dialogBg.setCornerRadius(14 * density);
-        layout.setBackground(dialogBg);
-
-        LinearLayout headerLayout = new LinearLayout(this);
-        headerLayout.setOrientation(LinearLayout.HORIZONTAL);
-        headerLayout.setGravity(Gravity.CENTER_VERTICAL);
-        headerLayout.setPadding(0, 0, 0, (int) (10 * density));
-
-        TextView tvTitle = new TextView(this);
-        tvTitle.setText("Настройки");
-        tvTitle.setTextColor(Color.parseColor("#EAE4DC"));
-        tvTitle.setTextSize(18f);
-        tvTitle.setTypeface(Typeface.SERIF, Typeface.BOLD);
-        headerLayout.addView(tvTitle, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView btnCloseCircle = createCloseCircleButton(density);
-        headerLayout.addView(btnCloseCircle);
-        layout.addView(headerLayout);
-
-        final TextView tvVol = new TextView(this);
-        tvVol.setTextColor(Color.parseColor("#D7CCC8"));
-        tvVol.setTextSize(14f);
-        tvVol.setText(isMusicMuted ? "Музыка: 0%" : "Музыка: " + musicVolumePercent + "%");
-        layout.addView(tvVol);
-
-        SeekBar sbVolume = new SeekBar(this);
-        sbVolume.setMax(100);
-        sbVolume.setProgress(isMusicMuted ? 0 : musicVolumePercent);
-        ColorStateList accentColor = ColorStateList.valueOf(Color.parseColor("#A3483B"));
-        ColorStateList trackColor = ColorStateList.valueOf(Color.parseColor("#4A3F35"));
-        sbVolume.setProgressTintList(accentColor);
-        sbVolume.setThumbTintList(accentColor);
-        sbVolume.setProgressBackgroundTintList(trackColor);
-        sbVolume.setPadding(0, (int) (8 * density), 0, (int) (14 * density));
-        layout.addView(sbVolume);
-
-        sbVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser) {
-                    musicVolumePercent = progress;
-                    isMusicMuted = (progress == 0);
-                    tvVol.setText("Музыка: " + progress + "%");
-                    applyMusicVolume();
-                    updateQuickMuteButton();
-                    saveSettings();
-                }
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        final TextView tvSpeed = new TextView(this);
-        tvSpeed.setTextColor(Color.parseColor("#D7CCC8"));
-        tvSpeed.setTextSize(14f);
-        tvSpeed.setText(getSpeedLabelText());
-        layout.addView(tvSpeed);
-
-        SeekBar sbSpeed = new SeekBar(this);
-        sbSpeed.setMax(100);
-        sbSpeed.setProgress(textSpeedProgress);
-        sbSpeed.setProgressTintList(accentColor);
-        sbSpeed.setThumbTintList(accentColor);
-        sbSpeed.setProgressBackgroundTintList(trackColor);
-        sbSpeed.setPadding(0, (int) (8 * density), 0, (int) (16 * density));
-        sbSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                textSpeedProgress = progress;
-                tvSpeed.setText(getSpeedLabelText());
-                updateCharDelay();
-                saveSettings();
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-        layout.addView(sbSpeed);
-
-        Button btnRestart = new Button(this);
-        btnRestart.setText("Начать сначала");
-        btnRestart.setAllCaps(false);
-        btnRestart.setTextSize(14f);
-        btnRestart.setTextColor(Color.parseColor("#FFFFFF"));
-
-        GradientDrawable restartBg = new GradientDrawable();
-        restartBg.setColor(Color.parseColor("#6E2626"));
-        restartBg.setCornerRadius(8 * density);
-        btnRestart.setBackground(restartBg);
-
-        LinearLayout.LayoutParams restartParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) (38 * density)
-        );
-        btnRestart.setLayoutParams(restartParams);
-        layout.addView(btnRestart);
-
-        builder.setView(layout);
-        AlertDialog settingsDialog = builder.create();
-
-        btnCloseCircle.setOnClickListener(v -> settingsDialog.dismiss());
-
-        btnRestart.setOnClickListener(v -> {
-            AlertDialog.Builder confirmBuilder = new AlertDialog.Builder(this);
-            LinearLayout confirmLayout = new LinearLayout(this);
-            confirmLayout.setOrientation(LinearLayout.VERTICAL);
-            confirmLayout.setPadding(pad, pad, pad, pad);
-
-            GradientDrawable confirmBg = new GradientDrawable();
-            confirmBg.setColor(Color.parseColor("#181512"));
-            confirmBg.setStroke((int) (2 * density), Color.parseColor("#4A3F35"));
-            confirmBg.setCornerRadius(14 * density);
-            confirmLayout.setBackground(confirmBg);
-
-            TextView confirmTitle = new TextView(this);
-            confirmTitle.setText("Сброс прогресса");
-            confirmTitle.setTextColor(Color.parseColor("#EAE4DC"));
-            confirmTitle.setTextSize(18f);
-            confirmTitle.setTypeface(Typeface.SERIF, Typeface.BOLD);
-            confirmTitle.setPadding(0, 0, 0, (int) (8 * density));
-            confirmLayout.addView(confirmTitle);
-
-            TextView confirmText = new TextView(this);
-            confirmText.setText("Начать историю с первой главы? Все открытые главы будут снова закрыты.");
-            confirmText.setTextColor(Color.parseColor("#D7CCC8"));
-            confirmText.setTextSize(14f);
-            confirmText.setPadding(0, 0, 0, (int) (14 * density));
-            confirmLayout.addView(confirmText);
-
-            LinearLayout confirmBtnLayout = new LinearLayout(this);
-            confirmBtnLayout.setOrientation(LinearLayout.HORIZONTAL);
-            confirmBtnLayout.setGravity(Gravity.END);
-
-            Button btnYes = new Button(this);
-            btnYes.setText("Да, сначала");
-            btnYes.setAllCaps(false);
-            btnYes.setTextColor(Color.parseColor("#FFFFFF"));
-            GradientDrawable yesBg = new GradientDrawable();
-            yesBg.setColor(Color.parseColor("#6E2626"));
-            yesBg.setCornerRadius(6 * density);
-            btnYes.setBackground(yesBg);
-            btnYes.setPadding(24, 0, 24, 0);
-
-            Button btnNo = new Button(this);
-            btnNo.setText("Отмена");
-            btnNo.setAllCaps(false);
-            btnNo.setTextColor(Color.parseColor("#D7CCC8"));
-            GradientDrawable noBg = new GradientDrawable();
-            noBg.setColor(Color.parseColor("#2E2722"));
-            noBg.setCornerRadius(6 * density);
-            btnNo.setBackground(noBg);
-            btnNo.setPadding(24, 0, 24, 0);
-
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, (int) (36 * density)
-            );
-            btnParams.setMargins(10, 0, 0, 0);
-            btnNo.setLayoutParams(btnParams);
-            btnYes.setLayoutParams(btnParams);
-
-            confirmBtnLayout.addView(btnNo);
-            confirmBtnLayout.addView(btnYes);
-            confirmLayout.addView(confirmBtnLayout);
-
-            confirmBuilder.setView(confirmLayout);
-            AlertDialog confirmDialog = confirmBuilder.create();
-
-            if (confirmDialog.getWindow() != null) {
-                confirmDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            }
-
-            btnNo.setOnClickListener(cd -> confirmDialog.dismiss());
-            btnYes.setOnClickListener(cd -> {
-                confirmDialog.dismiss();
-                settingsDialog.dismiss();
-                // Сбрасываем открытые главы в БД и возвращаемся к Главе I
-                dbHelper.resetUnlockedChapters();
-                lastCanonSceneId = "ch1_p1";
-                loadScene("ch1_p1");
-                showStyledNotification("История начата сначала");
-            });
-
-            confirmDialog.show();
-            if (confirmDialog.getWindow() != null) {
-                int cWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.78);
-                confirmDialog.getWindow().setLayout(cWidth, ViewGroup.LayoutParams.WRAP_CONTENT);
-            }
-        });
-
-        settingsDialog.show();
-
-        if (settingsDialog.getWindow() != null) {
-            settingsDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.82);
-            settingsDialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-    }
-
-    private void loadScene(String sceneId) {
-        StoryDatabaseHelper.SceneData node = dbHelper.getScene(sceneId);
-        if (node == null) return;
-
-        currentNode = node;
-        currentSceneId = sceneId;
-        if (!currentNode.isGameOver) {
-            lastCanonSceneId = sceneId;
-            // Автоматически открываем главу в списке глав, когда игрок дошел до неё
-            dbHelper.unlockChapter(currentNode.chapterId);
-        }
-
-        saveProgress();
-
-        typingHandler.removeCallbacksAndMessages(null);
-        choicesContainer.removeAllViews();
-        tvStoryText.setText("");
-        scrollView.scrollTo(0, 0);
-
-        if (currentNode.isGameOver) {
-            tvStoryText.setTextColor(Color.parseColor("#EF9A9A"));
-            currentFullText = "════════════════════\n" +
-                    "КОНЕЦ ИГРЫ\n" +
-                    "════════════════════\n\n" +
-                    "Причина гибели:\n" + currentNode.text;
-        } else {
-            tvStoryText.setTextColor(Color.parseColor("#E6DFD5"));
-            currentFullText = currentNode.text;
-        }
-
-        if (textSpeedProgress >= 100 || charDelayMs <= 0) {
-            finishTypingImmediately();
-            return;
-        }
-
-        currentCharIndex = 0;
-        isTyping = true;
-
-        typingRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (textSpeedProgress >= 100 || charDelayMs <= 0) {
-                    finishTypingImmediately();
-                    return;
-                }
-                if (currentCharIndex < currentFullText.length()) {
-                    tvStoryText.append(String.valueOf(currentFullText.charAt(currentCharIndex)));
-                    currentCharIndex++;
-                    scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
-                    typingHandler.postDelayed(this, charDelayMs);
-                } else {
-                    isTyping = false;
-                    renderChoices(currentNode);
-                }
-            }
-        };
-
-        typingHandler.post(typingRunnable);
-    }
-
-    private void finishTypingImmediately() {
-        typingHandler.removeCallbacksAndMessages(null);
-        isTyping = false;
-        tvStoryText.setText(currentFullText);
-        scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
-        renderChoices(currentNode);
-    }
-
-    private void renderChoices(StoryDatabaseHelper.SceneData node) {
-        choicesContainer.removeAllViews();
-
-        if (node.isGameOver) {
-            addChoiceButton("Начать игру сначала (Глава I)", "ch1_p1", true);
-            addChoiceButton("Переиграть с момента выбора", lastCanonSceneId, false);
-            return;
-        }
-
-        if (node.nextPageId != null && !node.nextPageId.isEmpty()) {
-            addArrowButton("Далее  ➔", node.nextPageId);
-            return;
-        }
-
-        List<StoryDatabaseHelper.ChoiceItem> shuffledChoices = new ArrayList<>(node.choices);
-        Collections.shuffle(shuffledChoices);
-
-        for (StoryDatabaseHelper.ChoiceItem choice : shuffledChoices) {
-            addChoiceButton(choice.text, choice.nextSceneId, false);
-        }
-    }
-
-    private void addArrowButton(String text, String targetNodeId) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setAllCaps(false);
-        button.setTextColor(Color.parseColor("#F5EBE6"));
-        button.setTextSize(16f);
-        button.setTypeface(Typeface.SERIF, Typeface.BOLD);
-
-        GradientDrawable btnBg = new GradientDrawable();
-        btnBg.setColor(Color.parseColor("#2A241F"));
-        btnBg.setStroke(2, Color.parseColor("#5C4B40"));
-        btnBg.setCornerRadius(10f);
-        button.setBackground(btnBg);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.setMargins(0, 0, 0, 8);
-        button.setLayoutParams(params);
-        button.setPadding(28, 22, 28, 22);
-
-        button.setOnClickListener(v -> loadScene(targetNodeId));
-        choicesContainer.addView(button);
-    }
-
-    private void addChoiceButton(String text, String targetNodeId, boolean resetChaptersOnClick) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setAllCaps(false);
-        button.setTextColor(Color.parseColor("#EAE4DC"));
-        button.setTextSize(15f);
-
-        GradientDrawable btnBg = new GradientDrawable();
-        btnBg.setColor(Color.parseColor("#1E1B18"));
-        btnBg.setStroke(2, Color.parseColor("#3D352E"));
-        btnBg.setCornerRadius(10f);
-        button.setBackground(btnBg);
-
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.setMargins(0, 0, 0, 14);
-        button.setLayoutParams(params);
-        button.setPadding(28, 24, 28, 24);
-
-        button.setOnClickListener(v -> {
-            if (resetChaptersOnClick) {
-                dbHelper.resetUnlockedChapters();
-                lastCanonSceneId = "ch1_p1";
-                showStyledNotification("История начата сначала");
-            }
-            loadScene(targetNodeId);
-        });
-        choicesContainer.addView(button);
+        return 0;
     }
 
     @Override
@@ -786,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+        if (mediaPlayer != null && musicVolume > 0 && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
         }
     }
@@ -794,11 +223,719 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        typingHandler.removeCallbacksAndMessages(null);
-        notificationHandler.removeCallbacksAndMessages(null);
+        if (typingRunnable != null) {
+            typingHandler.removeCallbacks(typingRunnable);
+        }
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
         }
+    }
+
+    private void loadScene(int sceneId) {
+        if (typingRunnable != null) {
+            typingHandler.removeCallbacks(typingRunnable);
+        }
+
+        Cursor sceneCursor = dbHelper.getScene(sceneId);
+        if (sceneCursor != null && sceneCursor.moveToFirst()) {
+            currentSceneId = sceneId;
+            currentBookId = sceneCursor.getInt(sceneCursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_BOOK_ID));
+            String chapterTitle = sceneCursor.getString(sceneCursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_CHAPTER_TITLE));
+            fullSceneText = sceneCursor.getString(sceneCursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_STORY_TEXT));
+
+            unlockScene(currentSceneId);
+
+            getSharedPreferences("QuestProgress", MODE_PRIVATE)
+                    .edit()
+                    .putInt("saved_scene_id", currentSceneId)
+                    .apply();
+
+            applyBookTheme(currentBookId);
+            tvChapterTitle.setText(chapterTitle);
+            sceneCursor.close();
+        } else {
+            if (sceneCursor != null) sceneCursor.close();
+            if (sceneId != 101) {
+                loadScene(101);
+                return;
+            }
+        }
+
+        choicesContainer.removeAllViews();
+        choicesContainer.setVisibility(View.INVISIBLE);
+
+        Cursor choicesCursor = dbHelper.getChoicesForScene(sceneId);
+        if (choicesCursor != null) {
+            while (choicesCursor.moveToNext()) {
+                String choiceText = choicesCursor.getString(choicesCursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_CHOICE_TEXT));
+                int nextSceneId = choicesCursor.getInt(choicesCursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_NEXT_SCENE));
+
+                Button choiceButton = createStyledChoiceButton(choiceText, nextSceneId);
+                choicesContainer.addView(choiceButton);
+            }
+            choicesCursor.close();
+        }
+
+        scrollViewStory.post(() -> scrollViewStory.fullScroll(ScrollView.FOCUS_UP));
+        startTypewriterEffect();
+    }
+
+    private void startTypewriterEffect() {
+        if (typingDelay <= 0L) {
+            finishTypingImmediately();
+            return;
+        }
+
+        isTyping = true;
+        charIndex = 0;
+        tvStoryText.setText("");
+        tvTapHint.setVisibility(View.VISIBLE);
+
+        typingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (charIndex < fullSceneText.length()) {
+                    int step = Math.min(3, fullSceneText.length() - charIndex);
+                    charIndex += step;
+                    tvStoryText.setText(fullSceneText.substring(0, charIndex));
+                    typingHandler.postDelayed(this, typingDelay);
+                } else {
+                    finishTypingImmediately();
+                }
+            }
+        };
+        typingHandler.post(typingRunnable);
+    }
+
+    private void finishTypingImmediately() {
+        if (typingRunnable != null) {
+            typingHandler.removeCallbacks(typingRunnable);
+        }
+        isTyping = false;
+        tvStoryText.setText(fullSceneText);
+        tvTapHint.setVisibility(View.GONE);
+        choicesContainer.setVisibility(View.VISIBLE);
+    }
+
+    private void applyBookTheme(int bookId) {
+        int chapterBannerBg;
+
+        if (bookId == 2) {
+            tvBookHeader.setText("Наследники скорби");
+            currentBgDeepColor = Color.parseColor("#0A1017");
+            currentCardBgColor = Color.parseColor("#111B27");
+            currentCardStrokeColor = Color.parseColor("#2E5370");
+            chapterBannerBg = Color.parseColor("#152436");
+            currentHeaderColor = Color.parseColor("#8AB4D6");
+            currentChapterColor = Color.parseColor("#B5D3EB");
+            currentHintColor = Color.parseColor("#63849E");
+            currentBtnBgColor = Color.parseColor("#162838");
+            currentBtnStrokeColor = Color.parseColor("#3B698C");
+            currentTextColor = Color.parseColor("#E1EAF2");
+        } else if (bookId == 3) {
+            tvBookHeader.setText("Пленники раздора");
+            currentBgDeepColor = Color.parseColor("#0F0B16");
+            currentCardBgColor = Color.parseColor("#191326");
+            currentCardStrokeColor = Color.parseColor("#4E386E");
+            chapterBannerBg = Color.parseColor("#221933");
+            currentHeaderColor = Color.parseColor("#B399D4");
+            currentChapterColor = Color.parseColor("#D0BEE8");
+            currentHintColor = Color.parseColor("#7E6899");
+            currentBtnBgColor = Color.parseColor("#241B35");
+            currentBtnStrokeColor = Color.parseColor("#63488C");
+            currentTextColor = Color.parseColor("#EAE3F2");
+        } else {
+            tvBookHeader.setText("Жнецы страданий");
+            currentBgDeepColor = Color.parseColor("#0D0B0A");
+            currentCardBgColor = Color.parseColor("#171311");
+            currentCardStrokeColor = Color.parseColor("#6B3A32");
+            chapterBannerBg = Color.parseColor("#241614");
+            currentHeaderColor = Color.parseColor("#D7B377");
+            currentChapterColor = Color.parseColor("#E8C39E");
+            currentHintColor = Color.parseColor("#8E7968");
+            currentBtnBgColor = Color.parseColor("#2E1917");
+            currentBtnStrokeColor = Color.parseColor("#8A423B");
+            currentTextColor = Color.parseColor("#E6DFD5");
+        }
+
+        rootLayout.setBackgroundColor(currentBgDeepColor);
+        tvBookHeader.setTextColor(currentHeaderColor);
+        tvChapterTitle.setTextColor(currentChapterColor);
+        tvStoryText.setTextColor(currentTextColor);
+        tvTapHint.setTextColor(currentHintColor);
+        topDivider.setBackgroundColor(currentCardStrokeColor);
+
+        ColorStateList topBtnTint = ColorStateList.valueOf(currentBtnBgColor);
+        btnSettings.setBackgroundTintList(topBtnTint);
+        btnChapters.setBackgroundTintList(topBtnTint);
+        btnSettings.setTextColor(currentTextColor);
+        btnChapters.setTextColor(currentTextColor);
+
+        GradientDrawable chapterDrawable = new GradientDrawable();
+        chapterDrawable.setColor(chapterBannerBg);
+        chapterDrawable.setCornerRadius(dpToPx(8));
+        chapterDrawable.setStroke(dpToPx(1), currentCardStrokeColor);
+        tvChapterTitle.setBackground(chapterDrawable);
+
+        GradientDrawable storyCardDrawable = new GradientDrawable();
+        storyCardDrawable.setColor(currentCardBgColor);
+        storyCardDrawable.setCornerRadius(dpToPx(12));
+        storyCardDrawable.setStroke(dpToPx(2), currentCardStrokeColor);
+        tvStoryText.setBackground(storyCardDrawable);
+    }
+
+    private Button createStyledChoiceButton(String text, int nextSceneId) {
+        Button btn = new Button(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 0, 0, dpToPx(10));
+        btn.setLayoutParams(params);
+
+        btn.setText(text);
+        btn.setAllCaps(false);
+        btn.setTypeface(Typeface.SERIF);
+        btn.setTextColor(currentTextColor);
+        btn.setTextSize(15.5f);
+
+        boolean isContinueBtn = text.trim().equals("Далее") || text.trim().equals("Далее ➔");
+        btn.setGravity(isContinueBtn ? Gravity.CENTER : (Gravity.CENTER_VERTICAL | Gravity.START));
+        btn.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12));
+
+        GradientDrawable btnDrawable = new GradientDrawable();
+        btnDrawable.setColor(currentBtnBgColor);
+        btnDrawable.setCornerRadius(dpToPx(10));
+        btnDrawable.setStroke(dpToPx(1), currentBtnStrokeColor);
+        btn.setBackground(btnDrawable);
+
+        btn.setOnClickListener(v -> loadScene(nextSceneId));
+        return btn;
+    }
+
+    private void showSettingsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LinearLayout container = createDialogContainer(currentCardBgColor, currentCardStrokeColor);
+
+        TextView titleView = createDialogTitle("Настройки", currentHeaderColor);
+        container.addView(titleView);
+        container.addView(createDialogDivider(currentCardStrokeColor));
+
+        SharedPreferences prefs = getSharedPreferences("QuestProgress", MODE_PRIVATE);
+
+        // 1. Ползунок: Скорость текста
+        TextView tvSpeedLabel = createSliderLabel("Скорость текста: " + getSpeedTextDescription(speedProgress));
+        SeekBar sbSpeed = createStyledSeekBar(40, speedProgress);
+        sbSpeed.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                speedProgress = progress;
+                typingDelay = (40 - progress);
+                tvSpeedLabel.setText("Скорость текста: " + getSpeedTextDescription(progress));
+                prefs.edit().putInt("speed_progress", speedProgress).apply();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        container.addView(tvSpeedLabel);
+        container.addView(sbSpeed);
+
+        // 2. Ползунок: Громкость
+        TextView tvVolumeLabel = createSliderLabel("Громкость: " + musicVolume + "%");
+        SeekBar sbVolume = createStyledSeekBar(100, musicVolume);
+        sbVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                musicVolume = progress;
+                tvVolumeLabel.setText("Громкость: " + musicVolume + "%");
+                applyMusicVolume();
+                prefs.edit().putInt("music_volume", musicVolume).apply();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        container.addView(tvVolumeLabel);
+        container.addView(sbVolume);
+
+        // 3. Ползунок: Размер текста
+        int initialFontProgress = Math.max(0, Math.min(10, Math.round(storyFontSize - 14f)));
+        TextView tvSizeLabel = createSliderLabel("Размер текста: " + Math.round(storyFontSize));
+        SeekBar sbSize = createStyledSeekBar(10, initialFontProgress);
+        sbSize.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                storyFontSize = 14f + progress;
+                tvSizeLabel.setText("Размер текста: " + Math.round(storyFontSize));
+                tvStoryText.setTextSize(storyFontSize);
+                prefs.edit().putFloat("story_font_size", storyFontSize).apply();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        container.addView(tvSizeLabel);
+        container.addView(sbSize);
+
+        container.addView(createDialogDivider(currentCardStrokeColor));
+
+        builder.setView(container);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        Button btnRestart = createDialogButton(
+                "Пройти историю с начала.",
+                currentBtnBgColor,
+                currentBtnStrokeColor,
+                currentChapterColor,
+                Gravity.CENTER
+        );
+        btnRestart.setOnClickListener(v -> {
+            dialog.dismiss();
+            showStylizedResetConfirmDialog();
+        });
+        container.addView(btnRestart);
+
+        Button btnOpenSite = createDialogButton(
+                "Открыть сайт проекта",
+                currentBgDeepColor,
+                currentCardStrokeColor,
+                currentHeaderColor,
+                Gravity.CENTER
+        );
+        btnOpenSite.setOnClickListener(v -> {
+            dialog.dismiss();
+            android.content.Intent intent = new android.content.Intent(MainActivity.this, WebViewActivity.class);
+            startActivity(intent);
+        });
+        container.addView(btnOpenSite);
+
+        Button btnClose = createDialogButton(
+                "Закрыть",
+                currentBgDeepColor,
+                currentCardStrokeColor,
+                currentHintColor,
+                Gravity.CENTER
+        );
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        container.addView(btnClose);
+
+        dialog.show();
+    }
+
+    private void showStylizedResetConfirmDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LinearLayout container = createDialogContainer(currentCardBgColor, currentCardStrokeColor);
+        container.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        // Стилизованная круглая иконка-символ в стиле Цитадели
+        TextView iconBadge = new TextView(this);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(58), dpToPx(58));
+        iconParams.setMargins(0, dpToPx(4), 0, dpToPx(12));
+        iconBadge.setLayoutParams(iconParams);
+        iconBadge.setText("↺");
+        iconBadge.setTextSize(26f);
+        iconBadge.setTextColor(currentHeaderColor);
+        iconBadge.setGravity(Gravity.CENTER);
+
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setShape(GradientDrawable.OVAL);
+        badgeBg.setColor(currentBtnBgColor);
+        badgeBg.setStroke(dpToPx(2), currentBtnStrokeColor);
+        iconBadge.setBackground(badgeBg);
+        container.addView(iconBadge);
+
+        TextView titleView = createDialogTitle("Пройти историю с начала?", currentHeaderColor);
+        container.addView(titleView);
+
+        TextView messageView = new TextView(this);
+        messageView.setText("Весь текущий прогресс чтения будет сброшен, а непрочитанные главы снова закроются до их прохождения.");
+        messageView.setTypeface(Typeface.SERIF);
+        messageView.setTextColor(currentTextColor);
+        messageView.setTextSize(15f);
+        messageView.setGravity(Gravity.CENTER);
+        messageView.setPadding(dpToPx(6), dpToPx(4), dpToPx(6), dpToPx(14));
+        container.addView(messageView);
+
+        container.addView(createDialogDivider(currentCardStrokeColor));
+
+        builder.setView(container);
+        AlertDialog confirmDialog = builder.create();
+        if (confirmDialog.getWindow() != null) {
+            confirmDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        Button btnConfirm = createDialogButton(
+                "Да, сбросить прогресс",
+                currentBtnBgColor,
+                currentBtnStrokeColor,
+                currentChapterColor,
+                Gravity.CENTER
+        );
+        btnConfirm.setOnClickListener(v -> {
+            confirmDialog.dismiss();
+            resetStoryToBeginning();
+        });
+        container.addView(btnConfirm);
+
+        Button btnCancel = createDialogButton(
+                "Отмена",
+                currentBgDeepColor,
+                currentCardStrokeColor,
+                currentHintColor,
+                Gravity.CENTER
+        );
+        btnCancel.setOnClickListener(v -> confirmDialog.dismiss());
+        container.addView(btnCancel);
+
+        confirmDialog.show();
+    }
+
+
+    @SuppressWarnings("deprecation")
+    private void showStylizedNoticeToast(String symbol, String message) {
+        LinearLayout toastRoot = new LinearLayout(this);
+        toastRoot.setOrientation(LinearLayout.HORIZONTAL);
+        toastRoot.setGravity(Gravity.CENTER_VERTICAL);
+        int padH = dpToPx(16);
+        int padV = dpToPx(12);
+        toastRoot.setPadding(padH, padV, padH, padV);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(currentCardBgColor);
+        bg.setCornerRadius(dpToPx(14));
+        bg.setStroke(dpToPx(2), currentBtnStrokeColor);
+        toastRoot.setBackground(bg);
+
+        TextView iconView = new TextView(this);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dpToPx(34), dpToPx(34));
+        iconParams.setMargins(0, 0, dpToPx(12), 0);
+        iconView.setLayoutParams(iconParams);
+        iconView.setText(symbol);
+        iconView.setTextSize(16f);
+        iconView.setTextColor(currentHeaderColor);
+        iconView.setGravity(Gravity.CENTER);
+
+        GradientDrawable iconCircle = new GradientDrawable();
+        iconCircle.setShape(GradientDrawable.OVAL);
+        iconCircle.setColor(currentBtnBgColor);
+        iconCircle.setStroke(dpToPx(1), currentCardStrokeColor);
+        iconView.setBackground(iconCircle);
+
+        TextView textView = new TextView(this);
+        textView.setText(message);
+        textView.setTypeface(Typeface.SERIF);
+        textView.setTextColor(currentTextColor);
+        textView.setTextSize(14.5f);
+
+        toastRoot.addView(iconView);
+        toastRoot.addView(textView);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setDuration(Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, dpToPx(48));
+        toast.setView(toastRoot);
+        toast.show();
+    }
+
+    private String getSpeedTextDescription(int progress) {
+        if (progress >= 38) return "Мгновенно";
+        if (progress >= 26) return "Быстро";
+        if (progress >= 14) return "Средне";
+        return "Медленно";
+    }
+
+    private void showBookSelectionDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LinearLayout container = createDialogContainer(currentCardBgColor, currentCardStrokeColor);
+
+        TextView titleView = createDialogTitle("Книги трилогии", currentHeaderColor);
+        container.addView(titleView);
+        container.addView(createDialogDivider(currentCardStrokeColor));
+
+        builder.setView(container);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        String[] bookTitles = {
+                "Книга 1. Жнецы страданий",
+                "Книга 2. Наследники скорби",
+                "Книга 3. Пленники раздора"
+        };
+        int[] firstScenes = {101, 201, 301};
+        int[] bookBgColors = {
+                Color.parseColor("#2E1917"),
+                Color.parseColor("#162838"),
+                Color.parseColor("#241B35")
+        };
+        int[] bookBorderColors = {
+                Color.parseColor("#8A423B"),
+                Color.parseColor("#3B698C"),
+                Color.parseColor("#63488C")
+        };
+        int[] bookTitleColors = {
+                Color.parseColor("#E8C39E"),
+                Color.parseColor("#B5D3EB"),
+                Color.parseColor("#D0BEE8")
+        };
+
+        for (int i = 0; i < 3; i++) {
+            final int bookId = i + 1;
+            final String title = bookTitles[i];
+            boolean isBookStarted = isSceneUnlocked(firstScenes[i]);
+
+            String displayLabel = isBookStarted ? title : ("🔒  " + title);
+            int textColor = isBookStarted ? bookTitleColors[i] : Color.parseColor("#77706B");
+
+            Button bookBtn = createDialogButton(
+                    displayLabel,
+                    bookBgColors[i],
+                    bookBorderColors[i],
+                    textColor,
+                    Gravity.START | Gravity.CENTER_VERTICAL
+            );
+
+            bookBtn.setOnClickListener(v -> {
+                dialog.dismiss();
+                showChaptersForBookDialog(bookId, title);
+            });
+            container.addView(bookBtn);
+        }
+
+        container.addView(createDialogDivider(currentCardStrokeColor));
+
+        Button btnClose = createDialogButton(
+                "Закрыть",
+                currentBgDeepColor,
+                currentCardStrokeColor,
+                currentHintColor,
+                Gravity.CENTER
+        );
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        container.addView(btnClose);
+
+        dialog.show();
+    }
+
+    private void showChaptersForBookDialog(int bookId, String bookFullTitle) {
+        int dlgCardBg;
+        int dlgStroke;
+        int dlgHeader;
+        int dlgBtnBg;
+        int dlgBtnStroke;
+        int dlgText;
+
+        if (bookId == 2) {
+            dlgCardBg = Color.parseColor("#111B27");
+            dlgStroke = Color.parseColor("#2E5370");
+            dlgHeader = Color.parseColor("#8AB4D6");
+            dlgBtnBg = Color.parseColor("#162838");
+            dlgBtnStroke = Color.parseColor("#3B698C");
+            dlgText = Color.parseColor("#E1EAF2");
+        } else if (bookId == 3) {
+            dlgCardBg = Color.parseColor("#191326");
+            dlgStroke = Color.parseColor("#4E386E");
+            dlgHeader = Color.parseColor("#B399D4");
+            dlgBtnBg = Color.parseColor("#241B35");
+            dlgBtnStroke = Color.parseColor("#63488C");
+            dlgText = Color.parseColor("#EAE3F2");
+        } else {
+            dlgCardBg = Color.parseColor("#171311");
+            dlgStroke = Color.parseColor("#6B3A32");
+            dlgHeader = Color.parseColor("#D7B377");
+            dlgBtnBg = Color.parseColor("#2E1917");
+            dlgBtnStroke = Color.parseColor("#8A423B");
+            dlgText = Color.parseColor("#E6DFD5");
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LinearLayout container = createDialogContainer(dlgCardBg, dlgStroke);
+
+        TextView titleView = createDialogTitle(bookFullTitle, dlgHeader);
+        container.addView(titleView);
+        container.addView(createDialogDivider(dlgStroke));
+
+        ScrollView chaptersScroll = new ScrollView(this);
+        chaptersScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(340)
+        );
+        chaptersScroll.setLayoutParams(scrollParams);
+
+        LinearLayout listLayout = new LinearLayout(this);
+        listLayout.setOrientation(LinearLayout.VERTICAL);
+        chaptersScroll.addView(listLayout);
+
+        builder.setView(container);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        Cursor cursor = dbHelper.getChaptersByBook(bookId);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String chTitle = cursor.getString(cursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_CHAPTER_TITLE));
+                int scId = cursor.getInt(cursor.getColumnIndexOrThrow(StoryDatabaseHelper.COL_SCENE_ID));
+                boolean unlocked = isSceneUnlocked(scId);
+
+                String label = unlocked ? ("•  " + chTitle) : ("🔒  " + chTitle);
+                int bg = unlocked ? dlgBtnBg : Color.parseColor("#121010");
+                int stroke = unlocked ? dlgBtnStroke : Color.parseColor("#2E2927");
+                int txtColor = unlocked ? dlgText : Color.parseColor("#665F5A");
+
+                Button chBtn = createDialogButton(
+                        label,
+                        bg,
+                        stroke,
+                        txtColor,
+                        Gravity.START | Gravity.CENTER_VERTICAL
+                );
+
+                chBtn.setOnClickListener(v -> {
+                    if (unlocked) {
+                        dialog.dismiss();
+                        loadScene(scId);
+                    } else {
+                        showStylizedNoticeToast("🔒", "Глава закрыта. Дойдите до неё по сюжету.");
+                    }
+                });
+                listLayout.addView(chBtn);
+            }
+            cursor.close();
+        }
+
+        container.addView(chaptersScroll);
+        container.addView(createDialogDivider(dlgStroke));
+
+        Button btnBackToBooks = createDialogButton(
+                "← К списку книг",
+                dlgBtnBg,
+                dlgBtnStroke,
+                dlgHeader,
+                Gravity.CENTER
+        );
+        btnBackToBooks.setOnClickListener(v -> {
+            dialog.dismiss();
+            showBookSelectionDialog();
+        });
+        container.addView(btnBackToBooks);
+
+        Button btnClose = createDialogButton(
+                "Закрыть",
+                currentBgDeepColor,
+                dlgStroke,
+                currentHintColor,
+                Gravity.CENTER
+        );
+        btnClose.setOnClickListener(v -> dialog.dismiss());
+        container.addView(btnClose);
+
+        dialog.show();
+    }
+
+    private LinearLayout createDialogContainer(int bgColor, int strokeColor) {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad = dpToPx(20);
+        container.setPadding(pad, pad, pad, pad);
+
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(bgColor);
+        drawable.setCornerRadius(dpToPx(16));
+        drawable.setStroke(dpToPx(2), strokeColor);
+        container.setBackground(drawable);
+        return container;
+    }
+
+    private TextView createDialogTitle(String title, int color) {
+        TextView tv = new TextView(this);
+        tv.setText(title);
+        tv.setTypeface(Typeface.SERIF, Typeface.BOLD);
+        tv.setTextSize(19f);
+        tv.setTextColor(color);
+        tv.setGravity(Gravity.CENTER);
+        tv.setPadding(0, 0, 0, dpToPx(10));
+        return tv;
+    }
+
+    private View createDialogDivider(int color) {
+        View divider = new View(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(1)
+        );
+        params.setMargins(0, dpToPx(8), 0, dpToPx(12));
+        divider.setLayoutParams(params);
+        divider.setBackgroundColor(color);
+        return divider;
+    }
+
+    private TextView createSliderLabel(String text) {
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTypeface(Typeface.SERIF);
+        tv.setTextColor(currentTextColor);
+        tv.setTextSize(15f);
+        tv.setPadding(0, dpToPx(6), 0, dpToPx(4));
+        return tv;
+    }
+
+    private SeekBar createStyledSeekBar(int max, int progress) {
+        SeekBar seekBar = new SeekBar(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 0, 0, dpToPx(10));
+        seekBar.setLayoutParams(params);
+        seekBar.setMax(max);
+        seekBar.setProgress(progress);
+        seekBar.setProgressTintList(ColorStateList.valueOf(currentHeaderColor));
+        seekBar.setThumbTintList(ColorStateList.valueOf(currentChapterColor));
+        seekBar.setProgressBackgroundTintList(ColorStateList.valueOf(currentBtnStrokeColor));
+        return seekBar;
+    }
+
+    private Button createDialogButton(String text, int bgColor, int strokeColor, int textColor, int gravity) {
+        Button btn = new Button(this);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(0, 0, 0, dpToPx(8));
+        btn.setLayoutParams(params);
+
+        btn.setText(text);
+        btn.setAllCaps(false);
+        btn.setTypeface(Typeface.SERIF);
+        btn.setTextColor(textColor);
+        btn.setTextSize(15f);
+        btn.setGravity(gravity);
+        btn.setPadding(dpToPx(14), dpToPx(10), dpToPx(14), dpToPx(10));
+
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(bgColor);
+        drawable.setCornerRadius(dpToPx(10));
+        drawable.setStroke(dpToPx(1), strokeColor);
+        btn.setBackground(drawable);
+
+        return btn;
     }
 }

@@ -1,74 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/splashRoot"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/titleContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0D0D0D"
-    android:padding="24dp">
+    android:fitsSystemWindows="true"
+    android:background="#090808"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="32dp">
 
-    <!-- Центральный текстовый блок -->
+    <!-- Верхняя, основная часть, которая центрируется -->
     <LinearLayout
-        android:id="@+id/titleContainer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:gravity="center"
         android:orientation="vertical">
 
         <TextView
+            android:id="@+id/tvSplashSeries"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="serif"
-            android:letterSpacing="0.12"
-            android:text="АЛЕНА ХАРИТОНОВА"
-            android:textColor="#9E9E9E"
-            android:textSize="16sp" />
-
-        <View
-            android:layout_width="100dp"
-            android:layout_height="1dp"
-            android:layout_marginTop="14dp"
-            android:layout_marginBottom="18dp"
-            android:background="#333333" />
+            android:letterSpacing="0.2"
+            android:text="ИНТЕРАКТИВНЫЙ ТЕКСТОВЫЙ КВЕСТ"
+            android:textColor="#8E7968"
+            android:textSize="12sp"
+            android:layout_marginBottom="12dp" />
 
         <TextView
+            android:id="@+id/tvSplashTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="serif"
             android:gravity="center"
-            android:letterSpacing="0.08"
-            android:text="ХОДЯЧИЕ\nВ НОЧИ"
-            android:textColor="#E0E0E0"
-            android:textSize="34sp"
+            android:text="ХОДЯЧИЕ В НОЧИ"
+            android:textColor="#ECE4D8"
+            android:textSize="32sp"
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/tvSplashBooks"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:fontFamily="serif"
-            android:text="Жнецы страданий"
-            android:textColor="#8D3B3B"
-            android:textSize="18sp"
-            android:textStyle="italic" />
+            android:gravity="center"
+            android:text="Жнецы страданий • Наследники скорби • Пленники раздора"
+            android:textColor="#B56357"
+            android:textSize="13sp" />
 
         <View
-            android:layout_width="60dp"
+            android:layout_width="160dp"
             android:layout_height="1dp"
             android:layout_marginTop="24dp"
-            android:layout_marginBottom="16dp"
-            android:background="#262626" />
+            android:layout_marginBottom="24dp"
+            android:background="#5C4438" />
 
         <TextView
+            android:id="@+id/tvSplashAuthors"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="serif"
             android:gravity="center"
-            android:text="Неофициальный текстовый квест\n(работа фаната по мотивам книги)"
-            android:textColor="#757575"
-            android:textSize="14sp"
-            android:lineSpacingExtra="4dp" />
-
+            android:text="Авторы произведения:\nАлёна Харитонова и Екатерина Казакова"
+            android:textColor="#C4B8AA"
+            android:textSize="16sp"
+            android:lineSpacingExtra="5dp" />
     </LinearLayout>
 
-</RelativeLayout>
+    <!-- Нижняя часть с пометкой -->
+    <TextView
+        android:id="@+id/tvFanQuestDisclaimer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:letterSpacing="0.1"
+        android:text="ФАНАТСКИЙ, НЕКОММЕРЧЕСКИЙ ПРОЕКТ"
+        android:textColor="#4A3C35"
+        android:textSize="10sp"
+        android:paddingBottom="16dp" />
+
+</LinearLayout>
