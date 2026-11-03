@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ходячие в ночи — Интерактивный квест по циклу книг</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Анимированное звездное небо на фоне -->
+    <canvas id="nightSkyCanvas"></canvas>
+
+    <main class="main-wrapper">
+
+        <!-- СТРАНИЦА 1: О ЦИКЛЕ КНИГ И ЗАВЯЗКА -->
+        <section id="page1" class="page active">
+            <div class="badge-quest">ИНТЕРАКТИВНЫЙ ПРОЕКТ ПО МОТИВАМ ТРИЛОГИИ</div>
+            
+            <h1 class="main-title">ХОДЯЧИЕ В НОЧИ</h1>
+            <p class="subtitle-books">Жнецы страданий • Наследники скорби • Пленники раздора</p>
+            <p class="authors-line">По циклу книг Алёны Харитоновой и Екатерины Казаковой</p>
+
+            <!-- Возвращенные иконки: Меч, Листок, Череп -->
+            <div class="orders-icons">
+                <div class="order-item" title="Ратоборцы">
+                    <div class="icon-circle">
+                        <!-- Иконка меча -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path>
+                            <path d="M13 19l6-6"></path>
+                            <path d="M16 16l4 4"></path>
+                            <path d="M19 21l2-2"></path>
+                        </svg>
+                    </div>
+                    <span>Ратоборцы</span>
+                </div>
+
+                <div class="order-item" title="Целители">
+                    <div class="icon-circle">
+                        <!-- Иконка листка -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+                            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+                        </svg>
+                    </div>
+                    <span>Целители</span>
+                </div>
+
+                <div class="order-item" title="Колдуны-наузники">
+                    <div class="icon-circle">
+                        <!-- Иконка черепа -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="12" r="1.5"></circle>
+                            <circle cx="15" cy="12" r="1.5"></circle>
+                            <path d="M8 20v2h8v-2"></path>
+                            <path d="M12.5 17l-.5-1-.5 1h1z"></path>
+                            <path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"></path>
+                        </svg>
+                    </div>
+                    <span>Наузники</span>
+                </div>
+            </div>
+
+            <!-- Подсвеченная рамка с описанием сюжета всей трилогии -->
+            <div class="prologue-box">
+                <p>
+                    Едва солнце скрывается за верхушками векового леса, мир за порогом перестает принадлежать живым. Наступает время Ходящих в Ночи — кровососов, волколаков и неупокоенных мертвяков, чей дурманящий Зов заставляет людей собственными руками размыкать засовы и шагать навстречу гибели.
+                </p>
+                <p>
+                    Между тьмой и людьми стоит лишь древняя Цитадель и её Осененные — те, в ком пробудился Дар ратоборца, целителя или колдуна-труповода. Пройдите же весь путь юной Лесаны и узнайте чем закончилась её история.
+                </p>
+                <p class="prologue-highlight">
+                    Каждое решение меняет судьбу героев: сможете ли вы сделать верный выбор?
+                </p>
+            </div>
+
+            <button class="btn-portal" onclick="switchPage('page2')">
+                Шагнуть за врата Цитадели
+            </button>
+        </section>
+
+        <!-- СТРАНИЦА 2: КАРТОЧКА ЦИТАДЕЛИ И СКАЧИВАНИЕ APK -->
+        <section id="page2" class="page">
+            <div class="badge-quest">ПОЛНОЕ ИЗДАНИЕ • ВСЕ ТРИ КНИГИ ЦИКЛА</div>
+
+            <h2 class="citadel-title">ВРАТА ЦИТАДЕЛИ ОТКРЫТЫ</h2>
+            <p class="citadel-subtitle">Выберите свой путь среди Осененных и встретьтесь с тем, что скрывает Ночь</p>
+
+            <!-- Иконки орденов на второй странице -->
+            <div class="orders-icons compact">
+                <div class="order-item">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.5 17.5L3 6V3h3l11.5 11.5"></path>
+                            <path d="M13 19l6-6"></path>
+                            <path d="M16 16l4 4"></path>
+                            <path d="M19 21l2-2"></path>
+                        </svg>
+                    </div>
+                    <span>Сталь и Дар</span>
+                </div>
+                <div class="order-item">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path>
+                            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path>
+                        </svg>
+                    </div>
+                    <span>Жизнь и Травы</span>
+                </div>
+                <div class="order-item">
+                    <div class="icon-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="9" cy="12" r="1.5"></circle>
+                            <circle cx="15" cy="12" r="1.5"></circle>
+                            <path d="M8 20v2h8v-2"></path>
+                            <path d="M12.5 17l-.5-1-.5 1h1z"></path>
+                            <path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"></path>
+                        </svg>
+                    </div>
+                    <span>Кровь и Наузы</span>
+                </div>
+            </div>
+
+            <div class="citadel-card">
+                <ul class="features-list">
+                    <li><strong>Три книги в одном приложении:</strong> «Жнецы страданий», «Наследники скорби» и «Пленники раздора» с индивидуальным оформлением каждой части.</li>
+                    <li><strong>Нелинейное повествование:</strong> десятки глав, каноничный финал и альтернативные концовки.</li>
+                    <li><strong>Атмосферное погружение:</strong> музыкальное сопровождение.</li>
+                </ul>
+
+                <!-- Укажите здесь точное имя вашего APK файла -->
+                <a href="walking-in-the-night.apk" download class="btn-download">
+                    Скачать приложение для Android (.APK)
+                </a>
+
+                <p class="install-hint">Для устройств на базе Android • Бесплатное некоммерческое издание</p>
+            </div>
+
+            <button class="btn-back" onclick="switchPage('page1')">
+                ← Вернуться к описанию цикла
+            </button>
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+:root {
+    --bg-deep: #080707;
+    --bg-card: rgba(20, 15, 14, 0.88);
+    --crimson-glow: rgba(168, 56, 45, 0.45);
+    --crimson-accent: #b84a39;
+    --bronze-border: #70523f;
+    --gold-text: #d7b377;
+    --main-text: #e6dfd5;
+    --muted-text: #9e9185;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--main-text);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+#nightSkyCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.main-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 820px;
+    padding: 36px 20px;
+}
+
+.page {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    animation: fadeInPage 0.7s ease-out forwards;
+}
+
+.page.active {
+    display: flex;
+}
+
+@keyframes fadeInPage {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.badge-quest {
+    font-size: 0.82rem;
+    letter-spacing: 0.22em;
+    color: var(--gold-text);
+    border: 1px solid var(--bronze-border);
+    background: rgba(35, 24, 20, 0.75);
+    padding: 6px 18px;
+    border-radius: 20px;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+}
+
+.main-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    color: #f2ece1;
+    letter-spacing: 0.08em;
+    text-shadow: 0 4px 22px rgba(184, 74, 57, 0.5);
+    margin-bottom: 8px;
+}
+
+.subtitle-books {
+    font-size: 1.2rem;
+    color: var(--crimson-accent);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.authors-line {
+    font-size: 1.08rem;
+    color: var(--muted-text);
+    font-style: italic;
+    margin-bottom: 24px;
+}
+
+/* Иконки: Меч, Листок, Череп */
+.orders-icons {
+    display: flex;
+    justify-content: center;
+    gap: 36px;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+}
+
+.orders-icons.compact {
+    margin-top: 14px;
+    margin-bottom: 22px;
+    gap: 28px;
+}
+
+.order-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--gold-text);
+    font-size: 0.95rem;
+    letter-spacing: 0.05em;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.order-item:hover {
+    transform: translateY(-4px);
+    color: #f3d7a2;
+}
+
+.icon-circle {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: rgba(34, 21, 19, 0.85);
+    border: 1.5px solid var(--bronze-border);
+    box-shadow: 0 0 15px rgba(168, 56, 45, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.order-item:hover .icon-circle {
+    border-color: var(--crimson-accent);
+    box-shadow: 0 0 22px var(--crimson-glow);
+}
+
+.icon-circle svg {
+    width: 26px;
+    height: 26px;
+}
+
+/* Рамка пролога с пульсацией */
+.prologue-box {
+    background: var(--bg-card);
+    border: 1px solid var(--bronze-border);
+    border-radius: 14px;
+    padding: 26px 30px;
+    margin-bottom: 28px;
+    text-align: left;
+    line-height: 1.65;
+    font-size: 1.18rem;
+    box-shadow: 0 0 25px var(--crimson-glow);
+    animation: pulseGlow 4s infinite alternate ease-in-out;
+}
+
+.prologue-box p {
+    margin-bottom: 14px;
+}
+
+.prologue-box p:last-child {
+    margin-bottom: 0;
+}
+
+.prologue-highlight {
+    color: var(--gold-text);
+    font-style: italic;
+    text-align: center;
+    padding-top: 6px;
+    border-top: 1px solid rgba(112, 82, 63, 0.35);
+}
+
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 16px rgba(168, 56, 45, 0.25);
+    }
+    100% {
+        box-shadow: 0 0 32px rgba(184, 74, 57, 0.55);
+    }
+}
+
+/* Кнопки */
+.btn-portal,
+.btn-download {
+    display: inline-block;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: #f5eee6;
+    background: linear-gradient(135deg, #4b1d19 0%, #2b1210 100%);
+    border: 1px solid var(--crimson-accent);
+    padding: 15px 34px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.btn-portal:hover,
+.btn-download:hover {
+    background: linear-gradient(135deg, #682722 0%, #3d1815 100%);
+    box-shadow: 0 0 24px var(--crimson-glow);
+    transform: translateY(-2px);
+}
+
+/* Вторая страница */
+.citadel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    color: #f2ece1;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+
+.citadel-subtitle {
+    font-size: 1.15rem;
+    color: var(--muted-text);
+    margin-bottom: 10px;
+}
+
+.citadel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--bronze-border);
+    border-radius: 14px;
+    padding: 28px 30px;
+    width: 100%;
+    margin-bottom: 22px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.75);
+}
+
+.features-list {
+    list-style: none;
+    text-align: left;
+    font-size: 1.14rem;
+    line-height: 1.6;
+    margin-bottom: 26px;
+}
+
+.features-list li {
+    position: relative;
+    padding-left: 22px;
+    margin-bottom: 12px;
+}
+
+.features-list li::before {
+    content: "✦";
+    position: absolute;
+    left: 0;
+    color: var(--crimson-accent);
+}
+
+.features-list strong {
+    color: var(--gold-text);
+}
+
+.install-hint {
+    margin-top: 14px;
+    font-size: 0.95rem;
+    color: var(--muted-text);
+}
+
+.btn-back {
+    background: transparent;
+    border: 1px solid var(--bronze-border);
+    color: var(--muted-text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    padding: 9px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.btn-back:hover {
+    color: var(--main-text);
+    border-color: var(--gold-text);
+}
+
+@media (max-width: 600px) {
+    .prologue-box,
+    .citadel-card {
+        padding: 20px 18px;
+        font-size: 1.08rem;
+    }
+    .orders-icons {
+        gap: 22px;
+    }
+}
