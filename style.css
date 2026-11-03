@@ -104,7 +104,7 @@ body {
     margin-bottom: 24px;
 }
 
-/* Иконки: Меч, Листок, Череп */
+
 .orders-icons {
     display: flex;
     justify-content: center;
@@ -158,7 +158,7 @@ body {
     height: 26px;
 }
 
-/* Рамка пролога с пульсацией */
+
 .prologue-box {
     background: var(--bg-card);
     border: 1px solid var(--bronze-border);
@@ -197,7 +197,7 @@ body {
     }
 }
 
-/* Кнопки */
+
 .btn-portal,
 .btn-download {
     display: inline-block;
@@ -222,7 +222,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* Вторая страница */
+
 .citadel-title {
     font-family: 'Playfair Display', serif;
     font-size: clamp(1.8rem, 4vw, 2.6rem);

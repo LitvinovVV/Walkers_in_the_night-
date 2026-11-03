@@ -1,4 +1,4 @@
-// Переключение между первой и второй страницами (SPA-навигация)
+
 function switchPage(targetId) {
     const pages = document.querySelectorAll('.page');
     pages.forEach(page => page.classList.remove('active'));
@@ -10,7 +10,7 @@ function switchPage(targetId) {
     }
 }
 
-// Анимация ночного звездного неба и падающих звезд на HTML5 Canvas
+
 const canvas = document.getElementById('nightSkyCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -55,7 +55,7 @@ function spawnShootingStar() {
 function animateSky() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Мерцающие звезды
+
     for (let s of stars) {
         s.alpha += s.speed;
         if (s.alpha >= 1 || s.alpha <= 0.15) {
@@ -70,7 +70,7 @@ function animateSky() {
         ctx.restore();
     }
 
-    // Падающие звезды 
+
     spawnShootingStar();
     for (let i = shootingStars.length - 1; i >= 0; i--) {
         let st = shootingStars[i];
